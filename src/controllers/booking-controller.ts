@@ -28,8 +28,30 @@ export async function postBooking(req: AuthenticatedRequest, res: Response) {
     if (error.name === "NotFoundError") {
       return res.sendStatus(httpStatus.NOT_FOUND);
     }
-    console.log(error.message);
     if (error.name === "fullCapacity") {
+      return res.status(httpStatus.FORBIDDEN).send(error.message);
+    }
+    if (error.name === "ConflictError") {
+      return res.status(httpStatus.CONFLICT).send(error.message);
+    }
+    return res.sendStatus(httpStatus.FORBIDDEN);
+  }
+}
+
+export async function updateBooking(req: AuthenticatedRequest, res: Response) {
+  const  userId  = req.userId || 577;
+  const  { bookingId }  = req.params;
+  const  { roomId }  = req.body;
+
+  try {
+    const booking = await bookingService.updateBooking(Number(userId), Number(roomId), Number(bookingId));
+
+    return res.status(httpStatus.OK).json({ bookingId: booking?.id });
+  } catch (error) {
+    if (error.name === "NotFoundError") {
+      return res.sendStatus(httpStatus.NOT_FOUND);
+    }
+    if (error.name === "Forbidden") {
       return res.status(httpStatus.FORBIDDEN).send(error.message);
     }
     return res.sendStatus(httpStatus.FORBIDDEN);

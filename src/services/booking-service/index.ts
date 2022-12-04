@@ -1,7 +1,8 @@
 import bookingRepository from "@/repositories/booking-repository";
 import hotelsService from "@/services/hotels-service";
 import roomsRepository from "@/repositories/rooms-repository";
-import { notFoundError } from "@/errors";
+import { conflictError, notFoundError } from "@/errors";
+import { Room } from "@prisma/client";
 
 async function getBooking(userId: number) {
   //Tem reserva para esse userId?
@@ -18,48 +19,64 @@ async function getBooking(userId: number) {
 async function postBooking(userId: number, roomId: number) {
   await hotelsService.listHotels(userId);
   //Tem o quarto?
-  const room = await roomsRepository.findRoom(roomId);
-  if (!room) {
-    throw notFoundError();
+  const room = await checkIfRoomExists(roomId);
+
+  //Checa se já tem uma reserva feita por esse usuário
+  const bookingByUserId = await bookingRepository.getBookingByUserId(userId);
+
+  if(bookingByUserId) {
+    throw conflictError("Already exists booking");
   }
   // Ainda tem vaga?
+ 
+  await checkCapacity (roomId, room);
+
+  return await bookingRepository.bookRoom(roomId, userId);
+}
+
+// O room id do booking atual tem que ser diferente do que vem para ser modificadp
+async function updateBooking(userId: number, roomId: number, bookingId: number) {
+  const bookingById = await bookingRepository.getBookingById(bookingId);
+
+  if(!bookingById) {
+    throw { name: "Forbidden", message: "No booking found" }; //403
+  }
+  //Tem o quarto?
+  const room = await checkIfRoomExists(roomId);
+
+  // Ainda tem vaga?
+ 
+  await checkCapacity (roomId, room);
+
+  await bookingRepository.updateBooking(roomId, userId);
+
+  return bookingById;
+}
+
+async function checkCapacity(roomId: number, room: Room) {
   const bookingsByRoomId = await bookingRepository.getBookingsByRoomId(roomId);
 
   const bookingsLength = bookingsByRoomId?.length;
 
   const roomCurrentCapacity = room?.capacity - bookingsLength;
 
-  // Lembrar de colocar que se já tiver um booking com o userId não fazer nada
-
-  console.log(roomCurrentCapacity);
-
   if (!roomCurrentCapacity) {
-    throw { name: "fullCapacity", message: "The room has reach full capacity" };
+    throw { name: "Forbidden", message: "The room has reach full capacity" };
   }
-
-  return await bookingRepository.bookRoom(roomId, userId);
 }
 
-// async function getHotels(userId: number) {
-//   await listHotels(userId);
-
-//   const hotels = await hotelRepository.findHotels();
-//   return hotels;
-// }
-
-// async function getHotelsWithRooms(userId: number, hotelId: number) {
-//   await listHotels(userId);
-//   const hotel = await hotelRepository.findRoomsByHotelId(hotelId);
-
-//   if (!hotel) {
-//     throw notFoundError();
-//   }
-//   return hotel;
-// }
+async function checkIfRoomExists(roomId: number) {
+  const room = await roomsRepository.findRoom(roomId);
+  if (!room) {
+    throw notFoundError(); //404
+  }
+  return room;
+}
 
 const bookingService = {
   getBooking,
-  postBooking
+  postBooking,
+  updateBooking
 };
 
 export default bookingService;
