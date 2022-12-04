@@ -21,6 +21,8 @@ async function postBooking(userId: number, roomId: number) {
   //Tem o quarto?
   const room = await checkIfRoomExists(roomId);
 
+  console.log("opa", room);
+
   //Checa se já tem uma reserva feita por esse usuário
   const bookingByUserId = await bookingRepository.getBookingByUserId(userId);
 
@@ -67,6 +69,7 @@ async function checkCapacity(roomId: number, room: Room) {
 
 async function checkIfRoomExists(roomId: number) {
   const room = await roomsRepository.findRoom(roomId);
+  console.log("Room", room);
   if (!room) {
     throw notFoundError(); //404
   }

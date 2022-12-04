@@ -5,7 +5,7 @@ import { getBooking, postBooking, updateBooking } from "@/controllers";
 const bookingRouter = Router();
 
 bookingRouter
-  // .all("/*", authenticateToken)
+  .all("/*", authenticateToken)
   .get("/", getBooking)
   .post("/", postBooking)
   .put("/:bookingId", updateBooking);
