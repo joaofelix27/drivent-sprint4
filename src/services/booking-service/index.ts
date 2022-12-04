@@ -1,8 +1,7 @@
 import bookingRepository from "@/repositories/booking-repository";
-import enrollmentRepository from "@/repositories/enrollment-repository";
-import ticketRepository from "@/repositories/ticket-repository";
+import hotelsService from "@/services/hotels-service";
+import roomsRepository from "@/repositories/rooms-repository";
 import { notFoundError } from "@/errors";
-import { cannotListHotelsError } from "@/errors/cannot-list-hotels-error";
 
 async function getBooking(userId: number) {
   //Tem reserva para esse userId?
@@ -16,19 +15,30 @@ async function getBooking(userId: number) {
   return booking;
 }
 
-// async function listHotels(userId: number) {
-//   //Tem enrollment?
-//   const enrollment = await enrollmentRepository.findWithAddressByUserId(userId);
-//   if (!enrollment) {
-//     throw notFoundError();
-//   }
-//   //Tem ticket pago isOnline false e includesHotel true
-//   const ticket = await ticketRepository.findTicketByEnrollmentId(enrollment.id);
+async function postBooking(userId: number, roomId: number) {
+  await hotelsService.listHotels(userId);
+  //Tem o quarto?
+  const room = await roomsRepository.findRoom(roomId);
+  if (!room) {
+    throw notFoundError();
+  }
+  // Ainda tem vaga?
+  const bookingsByRoomId = await bookingRepository.getBookingsByRoomId(roomId);
 
-//   if (!ticket || ticket.status === "RESERVED" || ticket.TicketType.isRemote || !ticket.TicketType.includesHotel) {
-//     throw cannotListHotelsError();
-//   }
-// }
+  const bookingsLength = bookingsByRoomId?.length;
+
+  const roomCurrentCapacity = room?.capacity - bookingsLength;
+
+  // Lembrar de colocar que se já tiver um booking com o userId não fazer nada
+
+  console.log(roomCurrentCapacity);
+
+  if (!roomCurrentCapacity) {
+    throw { name: "fullCapacity", message: "The room has reach full capacity" };
+  }
+
+  return await bookingRepository.bookRoom(roomId, userId);
+}
 
 // async function getHotels(userId: number) {
 //   await listHotels(userId);
@@ -48,7 +58,8 @@ async function getBooking(userId: number) {
 // }
 
 const bookingService = {
-  getBooking
+  getBooking,
+  postBooking
 };
 
 export default bookingService;
