@@ -25,7 +25,7 @@ async function postBooking(userId: number, roomId: number) {
   const bookingByUserId = await bookingRepository.getBookingByUserId(userId);
 
   if(bookingByUserId) {
-    throw conflictError("Already exists booking");
+    throw { name: "Forbidden", message: "Already exists booking" }; //403
   }
   // Ainda tem vaga?
  
